@@ -1,5 +1,7 @@
 extern crate nannou;
 
+use std::process::exit;
+
 use nannou::{
     noise::{NoiseFn, OpenSimplex, Seedable},
     prelude::*,
@@ -18,8 +20,9 @@ struct Model {
 fn model(app: &App) -> Model {
     let _win = app
         .new_window()
-        .size(1000, 1000)
-        .view(view)
+        .size(300, 300)
+        .view(record)
+        //.view(view)
         .key_pressed(key_pressed)
         .build()
         .unwrap();
@@ -38,6 +41,23 @@ fn from_polar(angle: f32, radius: f32) -> Vec2 {
     pt2(x, y)
 }
 
+static mut RECORDING: bool = false;
+static mut FRAME_COUNT: i32 = 500;
+
+fn record(app: &App, model: &Model, frame: Frame) {
+    view(app, model, frame);
+    unsafe {
+        if RECORDING {
+            app.main_window()
+                .capture_frame(format!("{FRAME_COUNT:03}") + ".png");
+            if FRAME_COUNT < 0 {
+                exit(0);
+            }
+            FRAME_COUNT -= 1;
+        }
+    }
+}
+
 fn view(app: &App, model: &Model, frame: Frame) {
     let draw = app.draw();
     let win = app.window_rect();
@@ -46,7 +66,7 @@ fn view(app: &App, model: &Model, frame: Frame) {
 
     let noise = OpenSimplex::new().set_seed(model.seed);
 
-    for radius in (50..win.w() as i64 / 2).step_by(model.stepsize) {
+    for radius in (20..win.w() as i64 / 2).step_by(model.stepsize) {
         let mut points: Vec<_> = (0..model.count)
             .map(|i| {
                 let angle = map_range(i, 0, model.count, 0, 360);
@@ -59,7 +79,10 @@ fn view(app: &App, model: &Model, frame: Frame) {
                     app.elapsed_frames() as f64 / 10. / (radius as f64).sqrt().sqrt(),
                 ]) as f32;
 
-                let distance = radius as f32 +  (2. * app.mouse.x / win.w()) * random_distance * model.stepsize as f32 / (radius as f32).sqrt().sqrt().sqrt() * 5.;
+                let distance = radius as f32
+                    + (2. * app.mouse.x / win.w()) * random_distance * model.stepsize as f32
+                        / (radius as f32).sqrt().sqrt().sqrt()
+                        * 5.;
 
                 let xy = from_polar(angle as f32, distance);
 
@@ -71,7 +94,10 @@ fn view(app: &App, model: &Model, frame: Frame) {
             .collect();
         points.push(points[0]);
 
-        draw.polyline().rotate(app.elapsed_frames() as f32 / radius as f32).weight(5.).points_colored(points);
+        draw.polyline()
+            .rotate(app.elapsed_frames() as f32 / radius as f32)
+            .weight(5.)
+            .points_colored(points);
     }
 
     draw.to_frame(app, &frame).unwrap()
@@ -83,6 +109,9 @@ fn key_pressed(_app: &App, model: &mut Model, key: Key) {
         Key::Down => model.stepsize -= 10,
         Key::Right => model.count += 1,
         Key::Left => model.count -= 1,
-        _ => ()
+        Key::S => unsafe {
+            RECORDING = true;
+        },
+        _ => (),
     }
 }
