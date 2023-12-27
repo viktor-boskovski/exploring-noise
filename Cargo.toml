@@ -17,3 +17,6 @@ nannou = { git = "https://github.com/nannou-org/nannou" }
 [[bin]]
 name = "polygon"
 path = "src/polygon/main.rs"
+[[bin]]
+name = "arrows"
+path = "src/arrows/main.rs"
